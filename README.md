@@ -14,3 +14,11 @@ sudo visudo -f /etc/sudoers.d/zabbix
 ```
 zabbix ALL=(ALL) NOPASSWD: /etc/zabbix/keepalived_discovery.sh
 ```
+Restart the agent to apply changes:
+```
+sudo systemctl restart zabbix-agent
+```
+or
+```
+sudo systemctl restart zabbix-agent2
+```
