@@ -1,0 +1,113 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: c648cb9e62854444817733920311a8bc
+      name: Applications
+  templates:
+    - uuid: e15c6719c4d54d07935db06e215c279c
+      template: 'Keepalived VRRP'
+      name: 'Keepalived VRRP'
+      groups:
+        - name: Applications
+      items:
+        - uuid: 20921fca3c3c4545a8632bd0ffc03f77
+          name: 'Keepalived VRRP Raw Data'
+          key: keepalived.vrrp.discovery
+          history: '0'
+          value_type: TEXT
+          tags:
+            - tag: Application
+              value: Keepalived
+        - uuid: 5722bc7c5ca34813985c30b3e8967638
+          name: 'Keepalived processes'
+          key: 'proc.num[keepalived]'
+          history: 7d
+          trends: '0'
+          tags:
+            - tag: Application
+              value: Keepalived
+          triggers:
+            - uuid: f88ffc9b58a34bb38f174120b2c72baf
+              expression: 'last(/Keepalived VRRP/proc.num[keepalived])=0'
+              name: 'Keepalived is NOT running'
+              priority: HIGH
+      discovery_rules:
+        - uuid: 64d8fc96f77543bb894ba5729792c777
+          name: 'Keepalived VRRP Discovery'
+          type: DEPENDENT
+          key: keepalived.vrrp.discovery.rule
+          item_prototypes:
+            - uuid: e97c56b3d2e64c4eac90ddbbe570740d
+              name: 'VRRP Instance {#VRRP_INSTANCE}: Interface'
+              type: DEPENDENT
+              key: 'keepalived.vrrp.iface[{#VRRP_INSTANCE}]'
+              history: 7d
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.data[?(@.instance == "{#VRRP_INSTANCE}")].iface.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: keepalived.vrrp.discovery
+              tags:
+                - tag: Application
+                  value: Keepalived
+            - uuid: 65846bede0304fcb8ef89af9bb0df994
+              name: 'VRRP Instance: {#VRRP_INSTANCE} Status'
+              type: DEPENDENT
+              key: 'keepalived.vrrp.state[{#VRRP_INSTANCE}]'
+              history: 7d
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.data[?(@.instance == "{#VRRP_INSTANCE}")].state.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 10m
+              master_item:
+                key: keepalived.vrrp.discovery
+              tags:
+                - tag: Application
+                  value: Keepalived
+              trigger_prototypes:
+                - uuid: 0cfee1fffa5147ca8c670b5939569dcd
+                  expression: 'last(/Keepalived VRRP/keepalived.vrrp.state[{#VRRP_INSTANCE}])="FAULT"'
+                  name: 'Keepalived {#VRRP_INSTANCE} on {HOST.NAME} in state FAULT!'
+                  opdata: '{ITEM.LASTVALUE}'
+                  priority: DISASTER
+                - uuid: d9a0b787df1d4b8fa26e50a5140d3370
+                  expression: 'change(/Keepalived VRRP/keepalived.vrrp.state[{#VRRP_INSTANCE}])<>0 and count(/Keepalived VRRP/keepalived.vrrp.state[{#VRRP_INSTANCE}],#2)<>1'
+                  name: 'Keepalived {#VRRP_INSTANCE} on {HOST.NAME} role changed'
+                  opdata: '{ITEM.LASTVALUE}'
+                  priority: HIGH
+            - uuid: 8b77f146eb434297b25c90b3f3ba6b11
+              name: 'VRRP Instance {#VRRP_INSTANCE}: Virtual Router ID'
+              type: DEPENDENT
+              key: 'keepalived.vrrp.vrid[{#VRRP_INSTANCE}]'
+              history: 7d
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.data[?(@.instance == "{#VRRP_INSTANCE}")].vrid.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: keepalived.vrrp.discovery
+              tags:
+                - tag: Application
+                  value: Keepalived
+          master_item:
+            key: keepalived.vrrp.discovery
+          lld_macro_paths:
+            - lld_macro: '{#VRRP_IFACE}'
+              path: $.iface
+            - lld_macro: '{#VRRP_INSTANCE}'
+              path: $.instance
+            - lld_macro: '{#VRRP_VRID}'
+              path: $.vrid
