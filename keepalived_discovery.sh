@@ -124,4 +124,3 @@ done
 out+=']}'
 echo "$out"
 
-EOF
