@@ -62,6 +62,11 @@ while IFS= read -r line; do
   line="${line#"${line%%[![:space:]]*}"}"
 
   case "$line" in
+    "------<"*)
+      # новая секция дампа — блок инстанса закончился, дальше State/Interface чужие
+      flush_instance
+      cur_inst=""
+      ;;
     "VRRP Instance = "*)
       flush_instance
       cur_inst="${line#VRRP Instance = }"
@@ -70,23 +75,14 @@ while IFS= read -r line; do
       cur_state="UNKNOWN"
       ;;
     "Interface = "*)
-      cur_iface="${line#Interface = }"
+      [[ -n "$cur_inst" ]] && { cur_iface="${line#Interface = }"; cur_iface="${cur_iface%%,*}"; }
       ;;
-    "VRRP Id = "*)
-      cur_vrid="${line#VRRP Id = }"
+    "Virtual Router ID = "*|"VRRP Id = "*)
+      [[ -n "$cur_inst" ]] && cur_vrid="${line#*= }"
       ;;
     "State = "*)
-      raw_state="${line#State = }"
-      # Маппинг внутренних статусов в понятные MASTER / BACKUP / FAULT
-      if [[ "$raw_state" == "UP, RUNNING" ]]; then
-        cur_state="MASTER"
-      elif [[ "$raw_state" == "not UP, not RUNNING" ]]; then
-        cur_state="BACKUP"
-      elif [[ "$raw_state" == *"FAULT"* || "$raw_state" == *"ERR"* ]]; then
-        cur_state="FAULT"
-      else
-        cur_state="$raw_state" # На случай других редких статусов (INIT и т.д.)
-      fi
+      # keepalived 2.x пишет состояние инстанса прямо: MASTER / BACKUP / FAULT / INIT
+      [[ -n "$cur_inst" ]] && cur_state="${line#State = }"
       ;;
   esac
 done < "$DATA_FILE"
@@ -123,4 +119,3 @@ done
 
 out+=']}'
 echo "$out"
-
